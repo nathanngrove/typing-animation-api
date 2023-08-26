@@ -1,5 +1,4 @@
 export class TypingAnimation {
-  #caretId: string;
   #queue: Array<string>;
   #fontSize: string;
   #parent: HTMLElement | null;
@@ -7,14 +6,16 @@ export class TypingAnimation {
   #caret: HTMLElement;
   #wordContainer: HTMLElement;
   #typingSpeed: number;
+  #backspaceSpeed: number;
+  #currentString: number;
 
   constructor(parent: HTMLElement | null) {
-    let randomNumber = Math.floor(Math.random() * 1000000);
-    this.#caretId = `caret${randomNumber}`;
     this.#queue = [];
     this.#fontSize = "64px";
-    this.#parent = parent;
+    this.#parent = parent ? parent : document.body;
     this.#typingSpeed = 250;
+    this.#backspaceSpeed = 150;
+    this.#currentString = 0;
 
     const container = document.createElement("div");
     container.style.fontSize = this.#fontSize;
@@ -22,7 +23,6 @@ export class TypingAnimation {
     container.style.alignItems = "center";
 
     const caret = document.createElement("div");
-    caret.id = this.#caretId;
     caret.style.display = "inline-block";
     caret.style.width = "2px";
     caret.style.height = this.#fontSize;
@@ -37,6 +37,7 @@ export class TypingAnimation {
         easing: "steps(2, end)",
       }
     );
+    caret.style.animationPlayState = "running";
 
     const wordContainer = document.createElement("div");
 
@@ -55,53 +56,54 @@ export class TypingAnimation {
     this.#fontSize = size;
   }
 
-  addText(text: string) {
-    this.#queue.push(text);
+  addText(string: string) {
+    this.#queue.push(string);
   }
 
-  backspace() {
-    while (this.#wordContainer.hasChildNodes()) {
+  play() {
+    if (this.#queue.length === 0) {
+      console.error(
+        "Add text using the addText function to play the animation."
+      );
+      return;
+    }
+
+    if (this.#currentString === this.#queue.length) {
+      this.#currentString = 0; //Continous animation
+      // return; //if we want it to stop
+    }
+
+    this.#typeText();
+    setTimeout(() => {
+      this.#backspaceText();
+    }, this.#queue[this.#currentString].length * this.#typingSpeed + this.#typingSpeed);
+
+    setTimeout(() => {
+      this.#currentString++;
+      this.play();
+    }, this.#typingSpeed * this.#queue[this.#currentString].length * 2 + this.#typingSpeed);
+  }
+
+  #typeText() {
+    this.#caret.style.animationPlayState = "paused";
+    this.#queue[this.#currentString].split("").forEach((letter, i) => {
+      setTimeout(() => {
+        const letterElement = document.createElement("span");
+        letterElement.innerText = letter;
+        this.#wordContainer.append(letterElement);
+        console.log(
+          this.#wordContainer.childElementCount ===
+            this.#queue[this.#currentString].length
+        );
+      }, this.#typingSpeed * i);
+    });
+  }
+
+  #backspaceText() {
+    this.#queue[this.#currentString].split("").forEach((_, i) => {
       setTimeout(() => {
         this.#wordContainer.lastChild?.remove();
-      }, this.#typingSpeed);
-    }
-  }
-
-  type() {
-    this.#queue.forEach((string, i) => {
-      setTimeout(
-        () => {
-          this.animateText(string);
-        },
-        i === 0
-          ? this.#typingSpeed
-          : (this.#queue[i - 1].length * this.#typingSpeed +
-              this.#typingSpeed) *
-              2
-      );
-      setTimeout(
-        () => {
-          this.backspace();
-        },
-        i === 0
-          ? this.#typingSpeed
-          : this.#queue[i - 1].length * this.#typingSpeed +
-              this.#typingSpeed * 2
-      );
+      }, this.#backspaceSpeed * i);
     });
-  }
-
-  animateText(text: string) {
-    const wordArray: Array<string> = text.split("");
-    wordArray.forEach((letter, i) => {
-      this.#animateTextHelper(letter, i, text.length);
-    });
-  }
-
-  #animateTextHelper(char: string, charNum: number, textLength: number) {
-    setTimeout(() => {
-      this.#wordContainer.append(char);
-      //if (charNum === textLength) this.#playCaretAnimation();
-    }, this.#typingSpeed * (charNum + 1));
   }
 }
