@@ -9,7 +9,7 @@ export class TypingAnimation {
   #backspaceSpeed: number;
   #currentString: number;
 
-  constructor(parent: HTMLElement | null) {
+  constructor(parent?: HTMLElement | null) {
     this.#queue = [];
     this.#fontSize = "64px";
     this.#parent = parent ? parent : document.body;
@@ -60,7 +60,7 @@ export class TypingAnimation {
     this.#queue.push(string);
   }
 
-  play() {
+  play(continuous: boolean = true, backspace: boolean = true) {
     if (this.#queue.length === 0) {
       console.error(
         "Add text using the addText function to play the animation."
@@ -69,19 +69,29 @@ export class TypingAnimation {
     }
 
     if (this.#currentString === this.#queue.length) {
-      this.#currentString = 0; //Continous animation
-      // return; //if we want it to stop
+      if (!continuous) return; //we want the animation to stop
+      this.#currentString = 0; //we want the animation to loop
     }
 
     this.#typeText();
-    setTimeout(() => {
-      this.#backspaceText();
-    }, this.#queue[this.#currentString].length * this.#typingSpeed + this.#typingSpeed);
+    if (backspace) {
+      setTimeout(() => {
+        this.#backspaceText();
+      }, this.#queue[this.#currentString].length * this.#typingSpeed + this.#typingSpeed);
+    }
 
-    setTimeout(() => {
-      this.#currentString++;
-      this.play();
-    }, this.#typingSpeed * this.#queue[this.#currentString].length * 2 + this.#typingSpeed);
+    setTimeout(
+      () => {
+        this.#currentString++;
+        this.play(continuous, backspace);
+      },
+      backspace
+        ? this.#typingSpeed * this.#queue[this.#currentString].length +
+            this.#backspaceSpeed * this.#queue[this.#currentString].length +
+            this.#typingSpeed
+        : this.#typingSpeed * this.#queue[this.#currentString].length +
+            this.#typingSpeed
+    );
   }
 
   #typeText() {
@@ -91,10 +101,6 @@ export class TypingAnimation {
         const letterElement = document.createElement("span");
         letterElement.innerText = letter;
         this.#wordContainer.append(letterElement);
-        console.log(
-          this.#wordContainer.childElementCount ===
-            this.#queue[this.#currentString].length
-        );
       }, this.#typingSpeed * i);
     });
   }
