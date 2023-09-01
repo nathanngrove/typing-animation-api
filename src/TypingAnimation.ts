@@ -11,7 +11,7 @@ export class TypingAnimation {
 
   constructor(parent?: HTMLElement | null) {
     this.#queue = [];
-    this.#fontSize = "64px";
+    this.#fontSize = "3rem";
     this.#parent = parent ? parent : document.body;
     this.#typingSpeed = 250;
     this.#backspaceSpeed = 150;
@@ -50,10 +50,36 @@ export class TypingAnimation {
     if (this.#parent) this.#parent.appendChild(this.#container);
   }
 
+  setFont() {}
+
   setFontSize(size: string) {
     this.#container.style.fontSize = size;
     this.#caret.style.height = size;
     this.#fontSize = size;
+  }
+
+  setFontFamily(fontFamily: string) {
+    this.#wordContainer.style.fontFamily = fontFamily;
+  }
+
+  setColor(color: string) {
+    this.#wordContainer.style.color = color;
+  }
+
+  italic() {
+    this.#wordContainer.style.fontStyle = "italic";
+  }
+
+  underline() {
+    this.#wordContainer.style.textDecoration = "underline";
+  }
+
+  strikethrough() {
+    this.#wordContainer.style.textDecoration = "line-through";
+  }
+
+  bold() {
+    this.#wordContainer.style.fontWeight = "bold";
   }
 
   addText(string: string) {
@@ -94,12 +120,17 @@ export class TypingAnimation {
     );
   }
 
+  #createLetterElement(letter: string) {
+    const letterElement = document.createElement("span");
+    letterElement.innerText = letter;
+    return letterElement;
+  }
+
   #typeText() {
     this.#caret.style.animationPlayState = "paused";
     this.#queue[this.#currentString].split("").forEach((letter, i) => {
       setTimeout(() => {
-        const letterElement = document.createElement("span");
-        letterElement.innerText = letter;
+        const letterElement = this.#createLetterElement(letter);
         this.#wordContainer.append(letterElement);
       }, this.#typingSpeed * i);
     });
