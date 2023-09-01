@@ -1,5 +1,20 @@
+type FontStylesObject = {
+  fontSize?: string;
+  color?: string;
+  fontFamily?: string;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  bold?: boolean;
+};
+
+type WordObject = {
+  string: string;
+  styles?: FontStylesObject;
+};
+
 export class TypingAnimation {
-  #queue: Array<string>;
+  #queue: Array<WordObject>;
   #fontSize: string;
   #parent: HTMLElement | null;
   #container: HTMLElement;
@@ -19,6 +34,7 @@ export class TypingAnimation {
 
     const container = document.createElement("div");
     container.style.fontSize = this.#fontSize;
+    container.style.height = this.#fontSize;
     container.style.display = "flex";
     container.style.alignItems = "center";
 
@@ -50,7 +66,9 @@ export class TypingAnimation {
     if (this.#parent) this.#parent.appendChild(this.#container);
   }
 
-  setFont() {}
+  setFont(styles: FontStylesObject) {
+    // Apply styles to all headlines, unless it is set on the WordObject
+  }
 
   setFontSize(size: string) {
     this.#container.style.fontSize = size;
@@ -82,8 +100,8 @@ export class TypingAnimation {
     this.#wordContainer.style.fontWeight = "bold";
   }
 
-  addText(string: string) {
-    this.#queue.push(string);
+  addText(wordObject: WordObject) {
+    this.#queue.push(wordObject);
   }
 
   play(continuous: boolean = true, backspace: boolean = true) {
@@ -103,7 +121,7 @@ export class TypingAnimation {
     if (backspace) {
       setTimeout(() => {
         this.#backspaceText();
-      }, this.#queue[this.#currentString].length * this.#typingSpeed + this.#typingSpeed);
+      }, this.#queue[this.#currentString].string.length * this.#typingSpeed + this.#typingSpeed);
     }
 
     setTimeout(
@@ -112,23 +130,57 @@ export class TypingAnimation {
         this.play(continuous, backspace);
       },
       backspace
-        ? this.#typingSpeed * this.#queue[this.#currentString].length +
-            this.#backspaceSpeed * this.#queue[this.#currentString].length +
+        ? this.#typingSpeed * this.#queue[this.#currentString].string.length +
+            this.#backspaceSpeed *
+              this.#queue[this.#currentString].string.length +
             this.#typingSpeed
-        : this.#typingSpeed * this.#queue[this.#currentString].length +
+        : this.#typingSpeed * this.#queue[this.#currentString].string.length +
             this.#typingSpeed
     );
   }
 
+  #applyStyles(element: HTMLElement) {
+    if (this.#queue[this.#currentString].styles?.fontSize !== undefined) {
+      this.#wordContainer.style.fontSize = this.#queue[this.#currentString]
+        .styles?.fontSize as string;
+      this.#caret.style.height = this.#queue[this.#currentString].styles
+        ?.fontSize as string;
+    } else {
+      this.#wordContainer.style.fontSize = this.#fontSize;
+      this.#caret.style.height = this.#fontSize;
+    }
+
+    if (this.#queue[this.#currentString].styles?.color !== undefined)
+      element.style.color = this.#queue[this.#currentString].styles
+        ?.color as string;
+
+    if (this.#queue[this.#currentString].styles?.fontFamily !== undefined)
+      element.style.fontFamily = this.#queue[this.#currentString].styles
+        ?.fontFamily as string;
+
+    if (this.#queue[this.#currentString].styles?.bold)
+      element.style.fontWeight = "bold";
+
+    if (this.#queue[this.#currentString].styles?.underline)
+      element.style.textDecoration = "underline";
+
+    if (this.#queue[this.#currentString].styles?.strikethrough)
+      element.style.textDecoration = "line-through";
+
+    if (this.#queue[this.#currentString].styles?.italic)
+      element.style.fontStyle = "italic";
+  }
+
   #createLetterElement(letter: string) {
     const letterElement = document.createElement("span");
+    this.#applyStyles(letterElement);
     letterElement.innerText = letter;
     return letterElement;
   }
 
   #typeText() {
     this.#caret.style.animationPlayState = "paused";
-    this.#queue[this.#currentString].split("").forEach((letter, i) => {
+    this.#queue[this.#currentString].string.split("").forEach((letter, i) => {
       setTimeout(() => {
         const letterElement = this.#createLetterElement(letter);
         this.#wordContainer.append(letterElement);
@@ -137,7 +189,7 @@ export class TypingAnimation {
   }
 
   #backspaceText() {
-    this.#queue[this.#currentString].split("").forEach((_, i) => {
+    this.#queue[this.#currentString].string.split("").forEach((_, i) => {
       setTimeout(() => {
         this.#wordContainer.lastChild?.remove();
       }, this.#backspaceSpeed * i);
