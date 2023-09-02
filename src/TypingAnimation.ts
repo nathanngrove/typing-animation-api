@@ -8,21 +8,29 @@ type FontStylesObject = {
   bold?: boolean;
 };
 
-type WordObject = {
+type Expression = {
   string: string;
   styles?: FontStylesObject;
 };
 
+type PlayOptions = {
+  continuous: boolean;
+  backspace: boolean;
+  newLine: boolean;
+};
+
+type Position = "center" | "left" | "right";
+
 export class TypingAnimation {
-  #queue: Array<WordObject>;
+  #queue: Array<Expression>;
   #fontSize: string;
   #parent: HTMLElement | null;
   #container: HTMLElement;
   #caret: HTMLElement;
-  #wordContainer: HTMLElement;
+  #expressionContainer: Array<HTMLElement>;
   #typingSpeed: number;
   #backspaceSpeed: number;
-  #currentString: number;
+  #currentExpression: number;
 
   constructor(parent?: HTMLElement | null) {
     this.#queue = [];
@@ -30,13 +38,13 @@ export class TypingAnimation {
     this.#parent = parent ? parent : document.body;
     this.#typingSpeed = 250;
     this.#backspaceSpeed = 150;
-    this.#currentString = 0;
+    this.#currentExpression = 0;
+    this.#expressionContainer = [];
 
     const container = document.createElement("div");
     container.style.fontSize = this.#fontSize;
-    container.style.height = this.#fontSize;
     container.style.display = "flex";
-    container.style.alignItems = "center";
+    container.style.flexDirection = "column";
 
     const caret = document.createElement("div");
     caret.style.display = "inline-block";
@@ -55,19 +63,14 @@ export class TypingAnimation {
     );
     caret.style.animationPlayState = "running";
 
-    const wordContainer = document.createElement("div");
-
-    container.appendChild(wordContainer);
-    container.appendChild(caret);
     this.#caret = caret;
     this.#container = container;
-    this.#wordContainer = wordContainer;
 
     if (this.#parent) this.#parent.appendChild(this.#container);
   }
 
   setFont(styles: FontStylesObject) {
-    // Apply styles to all headlines, unless it is set on the WordObject
+    // Apply styles to all headlines, unless it is set on the Expression
   }
 
   setFontSize(size: string) {
@@ -77,98 +80,87 @@ export class TypingAnimation {
   }
 
   setFontFamily(fontFamily: string) {
-    this.#wordContainer.style.fontFamily = fontFamily;
+    this.#container.style.fontFamily = fontFamily;
   }
 
   setColor(color: string) {
-    this.#wordContainer.style.color = color;
+    this.#container.style.color = color;
   }
 
   italic() {
-    this.#wordContainer.style.fontStyle = "italic";
+    this.#container.style.fontStyle = "italic";
   }
 
   underline() {
-    this.#wordContainer.style.textDecoration = "underline";
+    this.#container.style.textDecoration = "underline";
   }
 
   strikethrough() {
-    this.#wordContainer.style.textDecoration = "line-through";
+    this.#container.style.textDecoration = "line-through";
   }
 
   bold() {
-    this.#wordContainer.style.fontWeight = "bold";
+    this.#container.style.fontWeight = "bold";
   }
 
-  addText(wordObject: WordObject) {
-    this.#queue.push(wordObject);
-  }
-
-  play(continuous: boolean = true, backspace: boolean = true) {
-    if (this.#queue.length === 0) {
-      console.error(
-        "Add text using the addText function to play the animation."
-      );
-      return;
-    }
-
-    if (this.#currentString === this.#queue.length) {
-      if (!continuous) return; //we want the animation to stop
-      this.#currentString = 0; //we want the animation to loop
-    }
-
-    this.#typeText();
-    if (backspace) {
-      setTimeout(() => {
-        this.#backspaceText();
-      }, this.#queue[this.#currentString].string.length * this.#typingSpeed + this.#typingSpeed);
-    }
-
-    setTimeout(
-      () => {
-        this.#currentString++;
-        this.play(continuous, backspace);
-      },
-      backspace
-        ? this.#typingSpeed * this.#queue[this.#currentString].string.length +
-            this.#backspaceSpeed *
-              this.#queue[this.#currentString].string.length +
-            this.#typingSpeed
-        : this.#typingSpeed * this.#queue[this.#currentString].string.length +
-            this.#typingSpeed
-    );
+  position(align: Position, justify: Position) {
+    if (align === "center") this.#container.style.alignItems = "center";
+    if (align === "left") this.#container.style.alignItems = "flex-end";
+    if (align === "right") this.#container.style.alignItems = "flex-start";
+    if (justify === "center") this.#container.style.justifyContent = "center";
+    if (justify === "left") this.#container.style.justifyContent = "flex-end";
+    if (justify === "right")
+      this.#container.style.justifyContent = "flex-start";
   }
 
   #applyStyles(element: HTMLElement) {
-    if (this.#queue[this.#currentString].styles?.fontSize !== undefined) {
-      this.#wordContainer.style.fontSize = this.#queue[this.#currentString]
-        .styles?.fontSize as string;
-      this.#caret.style.height = this.#queue[this.#currentString].styles
+    // Change font-size on a pre-span basis rather than the whole container... Or create a new word container for each word... probably the latter
+    if (this.#queue[this.#currentExpression].styles?.fontSize !== undefined) {
+      this.#expressionContainer[this.#currentExpression].style.fontSize = this
+        .#queue[this.#currentExpression].styles?.fontSize as string;
+      this.#caret.style.height = this.#queue[this.#currentExpression].styles
         ?.fontSize as string;
     } else {
-      this.#wordContainer.style.fontSize = this.#fontSize;
+      this.#expressionContainer[this.#currentExpression].style.fontSize =
+        this.#fontSize;
       this.#caret.style.height = this.#fontSize;
     }
 
-    if (this.#queue[this.#currentString].styles?.color !== undefined)
-      element.style.color = this.#queue[this.#currentString].styles
+    if (this.#queue[this.#currentExpression].styles?.color !== undefined)
+      element.style.color = this.#queue[this.#currentExpression].styles
         ?.color as string;
 
-    if (this.#queue[this.#currentString].styles?.fontFamily !== undefined)
-      element.style.fontFamily = this.#queue[this.#currentString].styles
+    if (this.#queue[this.#currentExpression].styles?.fontFamily !== undefined)
+      element.style.fontFamily = this.#queue[this.#currentExpression].styles
         ?.fontFamily as string;
 
-    if (this.#queue[this.#currentString].styles?.bold)
+    if (this.#queue[this.#currentExpression].styles?.bold)
       element.style.fontWeight = "bold";
 
-    if (this.#queue[this.#currentString].styles?.underline)
+    if (this.#queue[this.#currentExpression].styles?.underline)
       element.style.textDecoration = "underline";
 
-    if (this.#queue[this.#currentString].styles?.strikethrough)
+    if (this.#queue[this.#currentExpression].styles?.strikethrough)
       element.style.textDecoration = "line-through";
 
-    if (this.#queue[this.#currentString].styles?.italic)
+    if (this.#queue[this.#currentExpression].styles?.italic)
       element.style.fontStyle = "italic";
+  }
+
+  addText(expression: Expression) {
+    this.#queue.push(expression);
+  }
+
+  #createWordContainer() {
+    const expressionContainer = document.createElement("div");
+    expressionContainer.style.display = "flex";
+    expressionContainer.style.alignItems = "center";
+    expressionContainer.appendChild(this.#caret);
+    this.#expressionContainer.push(expressionContainer);
+    this.#container.appendChild(
+      this.#expressionContainer[this.#expressionContainer.length - 1]
+    );
+    return expressionContainer;
   }
 
   #createLetterElement(letter: string) {
@@ -180,19 +172,68 @@ export class TypingAnimation {
 
   #typeText() {
     this.#caret.style.animationPlayState = "paused";
-    this.#queue[this.#currentString].string.split("").forEach((letter, i) => {
-      setTimeout(() => {
-        const letterElement = this.#createLetterElement(letter);
-        this.#wordContainer.append(letterElement);
-      }, this.#typingSpeed * i);
-    });
+    this.#createWordContainer();
+    this.#queue[this.#currentExpression].string
+      .split("")
+      .forEach((letter, i) => {
+        setTimeout(() => {
+          const letterElement = this.#createLetterElement(letter);
+          this.#expressionContainer[this.#currentExpression].append(
+            letterElement
+          );
+          this.#expressionContainer[this.#currentExpression].append(
+            this.#caret
+          );
+        }, this.#typingSpeed * i);
+      });
   }
 
   #backspaceText() {
-    this.#queue[this.#currentString].string.split("").forEach((_, i) => {
+    this.#queue[this.#currentExpression].string.split("").forEach((_, i) => {
       setTimeout(() => {
-        this.#wordContainer.lastChild?.remove();
+        this.#expressionContainer[this.#currentExpression].lastChild?.remove();
       }, this.#backspaceSpeed * i);
     });
+  }
+
+  play(options: PlayOptions) {
+    if (this.#currentExpression === 0 && !options.newLine) {
+      this.#container.style.flexDirection = "row";
+    }
+
+    if (this.#queue.length === 0) {
+      console.error(
+        "Add text using the addText function to play the animation."
+      );
+      return;
+    }
+
+    if (this.#currentExpression === this.#queue.length) {
+      if (!options.continuous) return; //we want the animation to stop
+      this.#currentExpression = 0; //we want the animation to loop
+    }
+
+    this.#typeText();
+    if (options.backspace) {
+      setTimeout(() => {
+        this.#backspaceText();
+      }, this.#queue[this.#currentExpression].string.length * this.#typingSpeed + this.#typingSpeed);
+    }
+
+    setTimeout(
+      () => {
+        this.#currentExpression++;
+        this.play(options);
+      },
+      options.backspace
+        ? this.#typingSpeed *
+            this.#queue[this.#currentExpression].string.length +
+            this.#backspaceSpeed *
+              this.#queue[this.#currentExpression].string.length +
+            this.#typingSpeed
+        : this.#typingSpeed *
+            this.#queue[this.#currentExpression].string.length +
+            this.#typingSpeed
+    );
   }
 }
