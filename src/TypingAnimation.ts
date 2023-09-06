@@ -257,11 +257,11 @@ export class TypingAnimation {
       this.#currentExpression = 0; //we want the animation to loop
     }
 
-    this.#queue[this.#currentExpression].getStyles().fontSize !== undefined
-      ? (this.#caret.style.height = this.#queue[
-          this.#currentExpression
-        ].getStyles().fontSize as string)
-      : this.#fontSize;
+    console.log(this.#queue[this.#currentExpression].getStyles().fontSize);
+    this.#caret.style.height =
+      this.#queue[this.#currentExpression].getStyles().fontSize !== undefined
+        ? (this.#queue[this.#currentExpression].getStyles().fontSize as string)
+        : this.#fontSize;
     this.#typeText();
     if (options.backspace) {
       setTimeout(() => {
