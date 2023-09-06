@@ -6,12 +6,13 @@ type FontStylesObject = {
   underline?: boolean;
   strikethrough?: boolean;
   bold?: boolean;
+  opacity?: string;
+  zIndex?: string;
 };
 
 type PlayOptions = {
   continuous: boolean;
   backspace: boolean;
-  newLine: boolean;
 };
 
 type Position = "center" | "left" | "right";
@@ -25,6 +26,7 @@ class Expression {
     this.#string = string;
     this.#styles = styles ? styles : {};
     this.#container = document.createElement("div");
+    this.#container.style.width = "100%";
     this.#container.style.display = "flex";
     this.#container.style.alignItems = "center";
   }
@@ -87,8 +89,8 @@ export class TypingAnimation {
 
     const container = document.createElement("div");
     container.style.fontSize = this.#fontSize;
-    container.style.display = "grid";
-    container.style.gridTemplateColumns = "1fr";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
 
     const caret = document.createElement("div");
     caret.style.display = "inline-block";
@@ -113,8 +115,25 @@ export class TypingAnimation {
     if (this.#parent) this.#parent.appendChild(this.#container);
   }
 
+  //Set all available styles in one function call
   setFont(styles: FontStylesObject) {
-    // Apply styles to all headlines, unless it is set on the Expression
+    if (styles.fontSize !== undefined)
+      this.#container.style.fontSize = styles.fontSize as string;
+
+    if (styles.color !== undefined)
+      this.#container.style.color = styles.color as string;
+
+    if (styles?.fontFamily !== undefined)
+      this.#container.style.fontFamily = styles.fontFamily as string;
+
+    if (styles.bold) this.#container.style.fontWeight = "bold";
+
+    if (styles.underline) this.#container.style.textDecoration = "underline";
+
+    if (styles.strikethrough)
+      this.#container.style.textDecoration = "line-through";
+
+    if (styles.italic) this.#container.style.fontStyle = "italic";
   }
 
   setFontSize(size: string) {
@@ -147,10 +166,22 @@ export class TypingAnimation {
     this.#container.style.fontWeight = "bold";
   }
 
-  position(justify?: Position) {
-    if (justify === "center") this.#container.style.justifyItems = "center";
-    if (justify === "left") this.#container.style.justifyItems = "start";
-    if (justify === "right") this.#container.style.justifyItems = "end";
+  justify(justify: Position) {
+    if (justify === "center") {
+      this.#queue.forEach((expression) => {
+        expression.getContainer().style.justifyContent = "center";
+      });
+    }
+    if (justify === "left") {
+      this.#queue.forEach((expression) => {
+        expression.getContainer().style.justifyContent = "flex-start";
+      });
+    }
+    if (justify === "right") {
+      this.#queue.forEach((expression) => {
+        expression.getContainer().style.justifyContent = "flex-end";
+      });
+    }
   }
 
   addText(expression: string, styles?: FontStylesObject) {
@@ -164,10 +195,10 @@ export class TypingAnimation {
     return;
   }
 
-  #createLetterElement(letter: string) {
-    const letterElement = document.createElement("span");
-    letterElement.innerText = letter;
-    return letterElement;
+  #appendLetter(letter: string) {
+    this.#queue[this.#currentExpression].getContainer().innerText = `${
+      this.#queue[this.#currentExpression].getContainer().innerText
+    }${letter}`;
   }
 
   #typeText() {
@@ -184,10 +215,7 @@ export class TypingAnimation {
       .split("")
       .forEach((letter, i) => {
         setTimeout(() => {
-          const letterElement = this.#createLetterElement(letter);
-          this.#queue[this.#currentExpression]
-            .getContainer()
-            .append(letterElement);
+          this.#appendLetter(letter);
           this.#queue[this.#currentExpression]
             .getContainer()
             .append(this.#caret);
@@ -201,25 +229,22 @@ export class TypingAnimation {
       .split("")
       .forEach((_, i) => {
         setTimeout(() => {
+          this.#queue[this.#currentExpression].getContainer().innerText =
+            this.#queue[this.#currentExpression]
+              .getContainer()
+              .innerText.slice(
+                0,
+                this.#queue[this.#currentExpression].getContainer().innerText
+                  .length - 1
+              );
           this.#queue[this.#currentExpression]
             .getContainer()
-            .children[
-              this.#queue[this.#currentExpression].getContainer()
-                .childElementCount - 2
-            ].remove();
+            .appendChild(this.#caret);
         }, this.#backspaceSpeed * i);
       });
   }
 
   play(options: PlayOptions) {
-    if (!options.newLine) {
-      this.#container.style.height = this.#fontSize;
-    }
-
-    if (this.#currentExpression === 0 && !options.newLine) {
-      this.#container.style.flexDirection = "row";
-    }
-
     if (this.#queue.length === 0) {
       console.error(
         "Add text using the addText function to play the animation."
